@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <functional>
 using namespace std;
 
 #define PILE_LENGTH_MAX 40
