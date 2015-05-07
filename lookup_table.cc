@@ -1,6 +1,7 @@
 #include <iostream>
 #include <algorithm>
 #include <functional>
+#include <fstream>
 using namespace std;
 
 #define PILE_LENGTH_MAX 40
@@ -265,6 +266,18 @@ int main() {
 	Board generate;
 	int a = 0, b = 0;
 
+	#ifdef DATAOUTPUT
+	// generate data
+	ofstream dataout( "output.csv", fstream::trunc );
+	for( int i = 1; i < 200; i++ ) {
+		for( int j = 0; j < i; j++ ) {
+			getMoveResult( i, j, generate.subboard[0], generate.subboard[1] );
+			generate.serialize();
+			dataout << (-recursive( generate, a, b )) << " ";
+		}
+		dataout << endl;
+	}
+	#else
 	// play game for i = 0 ... 199
 	for( int i = 0; i < 200; i++ ) {
 		generate.subboard[0] = i;
@@ -272,4 +285,5 @@ int main() {
 		cout << i << ":" << recursive( generate, a, b );
 		cout << "(" << a << "," << b << ")" << endl;
 	}
+	#endif
 }
