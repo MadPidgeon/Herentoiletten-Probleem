@@ -41,13 +41,13 @@ int Board::find( int s ) {
 // Preserves canonical representation
 int Board::add( int s ) {
 	int j = 0;
-	int temp;
 	while( subboard[j] != 0 ) j++;
 	while( subboard[j] < s && j >= 0 ) {
 		subboard[j] = subboard[j-1];
 		j--;
 	}
 	subboard[j+1] = s;
+	return j+1;
 }
 
 // Converts the current board to its canonical representation
@@ -211,6 +211,12 @@ int recursive( Board board, int& moveA, int& moveB ) {
 	if( result != 0 )	
 		return result;
 
+	#ifdef FORCE_LOSE
+	result = 1;
+	#else
+	result = -1;
+	#endif
+
 	for( int subboard = 0; subboard < PILE_LENGTH_MAX; subboard++ ) {
 		if( board.subboard[subboard] == 0 )
 			break;
@@ -251,8 +257,8 @@ int recursive( Board board, int& moveA, int& moveB ) {
 		}
 	}
 	// player can't win, return a loss
-	lookup.add( board, -1 );
-	return -1;
+	lookup.add( board, result );
+	return result;
 }
 
 int main() {
@@ -263,7 +269,7 @@ int main() {
 	for( int i = 0; i < 200; i++ ) {
 		generate.subboard[0] = i;
 		generate.serialize();
-		cout << i << "," << 15 << ":" << recursive( generate, a, b );
+		cout << i << ":" << recursive( generate, a, b );
 		cout << "(" << a << "," << b << ")" << endl;
 	}
 }

@@ -15,12 +15,12 @@ int undoMove( int m, int A[], int n ) {
 	A[m+1]--;
 }
 
-int recursive( int A[], int n, int& move) {
-	int result;
+int recursiveWin( int A[], int n, int& move) {
+	int result = -1;
 	for( int i = 0; i < n; i++ ) {
 		if( A[i] == 0 ) {
 			doMove( i, A, n );
-			result = -recursive( A, n, move );
+			result = -recursiveWin( A, n, move );
 			undoMove( i, A, n ); 
 			if( result > 0 ) {
 				move = i;
@@ -28,7 +28,23 @@ int recursive( int A[], int n, int& move) {
 			}
 		}
 	}
-	return -1;
+	return result;
+}
+
+int recursiveLose( int A[], int n, int& move) {
+	int result = 1;
+	for( int i = 0; i < n; i++ ) {
+		if( A[i] == 0 ) {
+			doMove( i, A, n );
+			result = -recursiveLose( A, n, move );
+			undoMove( i, A, n ); 
+			if( result > 0 ) {
+				move = i;
+				return result;
+			}
+		}
+	}
+	return result;
 }
 
 int main() {
@@ -41,7 +57,9 @@ int main() {
 		A[i] = 0;
 
 	for( int i = 0; i < n; i++ ) {
-		result = recursive( A, i, move ) > 0;
-		cout << i << " : " << result << "(" << move << ")" << endl;
+		cout << i << ":\n  win: " << recursiveWin( A, i, move );
+		cout << "(" << move << ")" << endl;
+		cout << "  lose: " << recursiveLose( A, i, move );
+		cout << "(" << move << ")" << endl;
 	}
 }
