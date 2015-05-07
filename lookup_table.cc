@@ -270,6 +270,7 @@ int main() {
 	// generate data
 	ofstream dataout( "output.csv", fstream::trunc );
 	for( int i = 1; i < 200; i++ ) {
+		cout << i << endl;
 		for( int j = 0; j < i; j++ ) {
 			getMoveResult( i, j, generate.subboard[0], generate.subboard[1] );
 			generate.serialize();
