@@ -191,7 +191,7 @@ void Tree::print( ostream& os ) {
 
 // Global lookup tree, because me lazy
 // srsly, wadja gonna do bout it
-Tree lookup;
+Tree lookup[2];
 
 // Calculate the number of unique moves on a subboard of size s
 int getSubmoveCount( int s ) {
@@ -206,17 +206,17 @@ void getMoveResult( int s, int submove, int& a, int& b ) {
 
 // Recursively determine whether the board is winning
 // Returns 1 for winning and -1 for losing 
+template< bool force_lose = false >
 int recursive( Board board, int& moveA, int& moveB ) {
 	// check if result of board is known
-	int result = lookup.find( board );
+	int result = lookup[force_lose].find( board );
 	if( result != 0 )	
 		return result;
 
-	#ifdef FORCE_LOSE
-	result = 1;
-	#else
-	result = -1;
-	#endif
+	if( force_lose )
+		result = 1;
+	else
+		result = -1;
 
 	for( int subboard = 0; subboard < PILE_LENGTH_MAX; subboard++ ) {
 		if( board.subboard[subboard] == 0 )
@@ -237,7 +237,7 @@ int recursive( Board board, int& moveA, int& moveB ) {
 				board.add(b);
 
 				// play recursively
-				result = -recursive( board, moveA, moveB );
+				result = -recursive< force_lose >( board, moveA, moveB );
 
 				// undo submove
 				board.cut( board.find(a) );
@@ -248,7 +248,7 @@ int recursive( Board board, int& moveA, int& moveB ) {
 					moveA = subboard_size;
 					moveB = submove;
 					board.add( subboard_size );
-					lookup.add( board, 1 );
+					lookup[force_lose].add( board, 1 );
 					return result;
 				}
 			}
@@ -258,33 +258,100 @@ int recursive( Board board, int& moveA, int& moveB ) {
 		}
 	}
 	// player can't win, return a loss
-	lookup.add( board, result );
+	lookup[force_lose].add( board, result );
 	return result;
 }
 
-int main() {
+int main( int argc, char** argv ) {
 	Board generate;
 	int a = 0, b = 0;
 
-	#ifdef DATAOUTPUT
-	// generate data
-	ofstream dataout( "output.csv", fstream::trunc );
-	for( int i = 1; i < 200; i++ ) {
-		cout << i << endl;
-		for( int j = 0; j < i; j++ ) {
-			getMoveResult( i, j, generate.subboard[0], generate.subboard[1] );
-			generate.serialize();
-			dataout << (-recursive( generate, a, b )) << " ";
+	// read parameters
+	bool data_output = false;
+	bool force_lose = false;
+	bool query_interface = false;
+	string output_file_name;
+
+	for( int i = 1; i < argc; i++ ) {
+		if( argv[i][0] == '-' ) {
+			switch( argv[i][1] ) {
+				case 'd':
+					data_output = true;
+					if( i + 1 < argc )
+						output_file_name = argv[i+1];
+					else 
+						output_file_name = "output.csv";
+					break;
+				case 'l':
+					force_lose = true;
+					break;
+				case 'q':
+					query_interface = true;
+					break;
+				case '?': case 'h':
+					cout << "usage: lookup_table [-d|-q] [-l]" << endl;
+					cout << "  -d, generate datafile" << endl;
+					cout << "  -l, consider losing the desirable outcome" << endl;
+					cout << "  -q, enter query interface" << endl;
+				break;
+				default:
+					cerr << "Invalid parameter \"" << argv[i] << "\"" << endl;
+			}
+		} else
+			cerr << "Expecting parameter instead of \"" << argv[i] << "\"" << endl;
+	}
+
+	if( query_interface && data_output ) {
+		cerr << "Error: Can't both generate datafile and enter query interface" << endl;
+		return -1;
+	}
+
+	// execute function
+	if( data_output ) {
+		// generate data
+		ofstream dataout( output_file_name, fstream::trunc );
+		for( int i = 1; i < 200; i++ ) {
+			cout << i << endl;
+			for( int j = 0; j < i; j++ ) {
+				getMoveResult( i, j, generate.subboard[0], generate.subboard[1] );
+				generate.serialize();
+				if( force_lose )
+					dataout << (-recursive<true>( generate, a, b )) << " ";
+				else
+					dataout << (-recursive( generate, a, b )) << " ";
+			}
+			dataout << endl;
 		}
-		dataout << endl;
+	} else if ( query_interface ) {
+		// enter query interface
+		int n;
+		char l;
+		while(true) {
+			cin >> l;
+			cin >> n;
+			for( int i = 0; i < n; i++ )
+				cin >> generate.subboard[i];
+			for( int i = n; i < PILE_LENGTH_MAX; i++ )
+				generate.subboard[i] = 0;
+			generate.serialize();
+			if( l == 'l' )
+				cout << recursive<true>( generate, a, b );
+			else
+				cout << recursive( generate, a, b );
+			cout << "(" << a << "," << b << ")" << endl;
+		}
+	} else {
+		// play game for i = 0 ... 199
+		for( int i = 0; i < 200; i++ ) {
+			generate.subboard[0] = i;
+			generate.serialize();
+			if( force_lose )
+				cout << i << ":" << recursive<true>( generate, a, b );
+			else
+				cout << i << ":" << recursive( generate, a, b );
+			cout << "(" << a << "," << b << ")" << endl;
+		}
 	}
-	#else
-	// play game for i = 0 ... 199
-	for( int i = 0; i < 200; i++ ) {
-		generate.subboard[0] = i;
-		generate.serialize();
-		cout << i << ":" << recursive( generate, a, b );
-		cout << "(" << a << "," << b << ")" << endl;
-	}
-	#endif
+
+	return 0;
 }
