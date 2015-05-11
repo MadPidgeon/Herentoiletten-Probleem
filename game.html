@@ -1,0 +1,45 @@
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="game.js"></script>
+
+<style>
+	body {
+		margin: 0 0 0 0;
+		padding: 0 0 0 0;
+	}
+
+	#board {
+		width: 100%;
+	}
+
+	.place {
+		float: left;
+		width: 40px;
+		height: 40px;
+		cursor: pointer;
+		text-align: center;
+		vertical-align: middle;
+		background: #eee;
+		line-height: 40px;
+		font-size: 20px;
+		border-right: 1px solid #000;
+		border-bottom: 1px solid #000;
+		-moz-user-select: none; 
+        -khtml-user-select: none; 
+        -webkit-user-select: none; 
+        -o-user-select: none; 
+        user-select: none;
+	}
+</style>
+
+
+</head>
+
+<body>
+	<div id="whichPlayer">Player A</div>
+	<input id="n" type="text" /><button id="setN">Zet Bordlengte</button> <button id="undo" >Undo</button> <br><br>
+	<div id="board"></div>
+</body>
+</html>
