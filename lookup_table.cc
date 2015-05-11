@@ -289,7 +289,7 @@ int main( int argc, char** argv ) {
 					query_interface = true;
 					break;
 				case '?': case 'h':
-					cout << "usage: lookup_table [-d|-q] [-l]" << endl << ednl;
+					cout << "usage: lookup_table [-d|-q] [-l]" << endl << endl;
 					cout << "  -d, generate datafile" << endl;
 					cout << "  -l, consider losing the desirable outcome" << endl;
 					cout << "  -q, enter query interface" << endl;
