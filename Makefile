@@ -1,6 +1,6 @@
 FLAGS = -Wall -Wextra -Wpedantic -O3 -std=c++11
 
-all: bruteforce lookup_table
+all: bruteforce lookup_table lookup_table_multi
 
 bruteforce: bruteforce.cc
 	g++ bruteforce.cc -o bruteforce $(FLAGS)
