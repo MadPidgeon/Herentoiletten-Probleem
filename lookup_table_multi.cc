@@ -2,19 +2,23 @@
 #include <algorithm>
 #include <functional>
 #include <fstream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 using namespace std;
 
 #define PILE_LENGTH_MAX 40
 
 // Datastructure in which the state of the game is saved
 struct Board {
-	int  subboard[PILE_LENGTH_MAX];
+	int*  subboard;
 	void print( ostream& );
 	int  cut( int i );
 	int  find( int i );
 	int  add( int i );
 	void serialize();
-	Board();
+	void init();
+	void deinit();
 };
 
 // Removes a subboard with index i from the board
@@ -67,10 +71,18 @@ void Board::print( ostream& os ) {
 }
 
 // Constructor
-Board::Board() {
+void Board::init() {
+	subboard = new int[PILE_LENGTH_MAX];
 	for( int i = 0; i < PILE_LENGTH_MAX; i++ )
 		subboard[i] = 0;
 }
+
+// Destructor
+void Board::deinit() {
+	delete [] subboard;
+}
+
+mutex treewrite_mt;
 
 // Datastructure in which the results of known games is stored
 class Tree {
@@ -102,20 +114,24 @@ public:
 int Tree::Node::addChild( int v ) {
 	int j;
 	int k;
+	for( int i = 0; i < child_count; i++ )
+		if( child[i].n == v )
+			return i;
 	Child* temp = child;
-	child = new Child[ child_count + 1 ];
+	Child* childX = new Child[ child_count + 1 ];
 	for( j = 0; j < child_count; j++ )
 		if( temp[j].n < v )
-			child[j] = temp[j];
+			childX[j] = temp[j];
 		else 
 			break;
-	child[j].n = v;
-	child[j].ch = new Node;
+	childX[j].n = v;
+	childX[j].ch = new Node;
 	k = j;
 	for(; j < child_count; j++ )
-		child[j+1] = temp[j];
+		childX[j+1] = temp[j];
 	delete [] temp;
 	child_count++;
+	child = childX;
 	return k;
 }
 
@@ -150,8 +166,11 @@ void Tree::Node::add( Board board, int w, int depth ) {
 		win = w;
 	else {
 		int c = findChild( board.subboard[ depth ] );
-		if( c == -1 ) 
+		if( c == -1 ) {
+			treewrite_mt.lock();
 			c = addChild( board.subboard[ depth ] );
+			treewrite_mt.unlock();
+		}
 		child[ c ].ch->add( board, w, depth + 1 );
 	}
 }
@@ -262,97 +281,57 @@ int recursive( Board board, int& moveA, int& moveB ) {
 	return result;
 }
 
-int main( int argc, char** argv ) {
-	Board generate;
-	int a = 0, b = 0;
+mutex mt_dataout;
+condition_variable cv_threadpool;
+mutex mt_cv_threadpool;
+ofstream dataout;
+const int THREAD_MAX = 10;
+int THREAD_COUNT = 0;
 
-	// read parameters
-	bool data_output = false;
-	bool force_lose = false;
-	bool query_interface = false;
-	string output_file_name;
+void crunch( int i, int j ) {
+	int a = -1, b = -1, result;
+	Board board;
+	board.init();
 
-	for( int i = 1; i < argc; i++ ) {
-		if( argv[i][0] == '-' ) {
-			switch( argv[i][1] ) {
-				case 'd':
-					data_output = true;
-					if( i + 1 < argc )
-						output_file_name = argv[i+1];
-					else 
-						output_file_name = "output.csv";
-					break;
-				case 'l':
-					force_lose = true;
-					break;
-				case 'q':
-					query_interface = true;
-					break;
-				case '?': case 'h':
-					cout << "usage: lookup_table [-d|-q] [-l]" << endl << ednl;
-					cout << "  -d, generate datafile" << endl;
-					cout << "  -l, consider losing the desirable outcome" << endl;
-					cout << "  -q, enter query interface" << endl;
-					return 0;
-				break;
-				default:
-					cerr << "Invalid parameter \"" << argv[i] << "\"" << endl;
-			}
-		} else
-			cerr << "Expecting parameter instead of \"" << argv[i] << "\"" << endl;
-	}
+	getMoveResult( i, j, board.subboard[0], board.subboard[1] );
+	board.serialize();
 
-	if( query_interface && data_output ) {
-		cerr << "Error: Can't both generate datafile and enter query interface" << endl;
-		return -1;
-	}
+	result = -recursive( board, a, b );
 
-	// execute function
-	if( data_output ) {
-		// generate data
-		ofstream dataout( output_file_name, fstream::trunc );
-		for( int i = 1; i < 200; i++ ) {
-			cout << i << endl;
-			for( int j = 0; j < i; j++ ) {
-				getMoveResult( i, j, generate.subboard[0], generate.subboard[1] );
-				generate.serialize();
-				if( force_lose )
-					dataout << (-recursive<true>( generate, a, b )) << " ";
-				else
-					dataout << (-recursive( generate, a, b )) << " ";
-			}
-			dataout << endl;
-		}
-	} else if ( query_interface ) {
-		// enter query interface
-		int n;
-		char l;
-		while(true) {
-			cin >> l;
-			cin >> n;
-			for( int i = 0; i < n; i++ )
-				cin >> generate.subboard[i];
-			for( int i = n; i < PILE_LENGTH_MAX; i++ )
-				generate.subboard[i] = 0;
-			generate.serialize();
-			if( l == 'l' )
-				cout << recursive<true>( generate, a, b );
-			else
-				cout << recursive( generate, a, b );
-			cout << "(" << a << "," << b << ")" << endl;
-		}
-	} else {
-		// play game for i = 0 ... 199
-		for( int i = 0; i < 200; i++ ) {
-			generate.subboard[0] = i;
-			generate.serialize();
-			if( force_lose )
-				cout << i << ":" << recursive<true>( generate, a, b );
-			else
-				cout << i << ":" << recursive( generate, a, b );
-			cout << "(" << a << "," << b << ")" << endl;
+	board.deinit();
+
+	mt_dataout.lock();
+	dataout << i << " " << j << " " << result << " " << a << " " << b << endl;
+	THREAD_COUNT--;
+	cv_threadpool.notify_all();
+	mt_dataout.unlock();
+}
+
+int main( ) {
+	// Setup
+	dataout.open( "outputX.csv", fstream::trunc );
+
+	// Generate data
+	for( int i = 1; i < 200; i++ ) {
+		cout << i << endl;
+		for( int j = 0; j < i; j++ ) {
+			unique_lock<mutex> lck( mt_cv_threadpool );
+			while( THREAD_COUNT >= THREAD_MAX )
+				cv_threadpool.wait( lck );
+
+			thread t( crunch, i, j );
+			t.detach();
+
+			mt_dataout.lock();
+			THREAD_COUNT++;
+			mt_dataout.unlock();
 		}
 	}
+
+	// wait until finished
+	unique_lock<mutex> lck( mt_cv_threadpool );
+	while( THREAD_COUNT > 0 )
+		cv_threadpool.wait( lck );
 
 	return 0;
 }

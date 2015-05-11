@@ -7,3 +7,6 @@ bruteforce: bruteforce.cc
 
 lookup_table: lookup_table.cc
 	g++ lookup_table.cc -o lookup_table $(FLAGS)
+
+lookup_table_multi: lookup_table_multi.cc
+	g++ lookup_table_multi.cc -o lookup_table_multi $(FLAGS) -pthread
