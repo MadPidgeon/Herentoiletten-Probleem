@@ -212,6 +212,19 @@ void Tree::print( ostream& os ) {
 // srsly, wadja gonna do bout it
 Tree lookup[2];
 
+
+#ifdef EXT_RULE
+// Calculate the number of unique moves on a subboard of size s
+int getSubmoveCount( int s ) {
+	return ( s - 1 )/2 + 1;
+}
+
+// Converts a submove number to its resulting subboards a and b
+void getMoveResult( int s, int submove, int& a, int& b ) {
+	a = max( 0, submove - 2 );
+	b = s - min( submove + 3, s );
+}
+#else
 // Calculate the number of unique moves on a subboard of size s
 int getSubmoveCount( int s ) {
 	return ( s - 1 )/2 + 1;
@@ -222,6 +235,8 @@ void getMoveResult( int s, int submove, int& a, int& b ) {
 	a = max( 0, submove - 1 );
 	b = s - min( submove + 2, s );
 }
+#endif
+
 
 // Recursively determine whether the board is winning
 // Returns 1 for winning and -1 for losing 
